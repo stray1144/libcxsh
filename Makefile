@@ -6,12 +6,12 @@ PREFIX ?= /usr
 INCLUDE_INSTALL := $(PREFIX)/include
 LIB_INSTALL := $(PREFIX)/lib64
 
-LEXER_SOURCE := lexer/lexer.c
-REO_CORE_SOURCE := reo/core.c
-REO_READ_SOURCE := reo/read.c
-REO_WRITE_SOURCE := reo/write.c
+LEXER_SOURCE := source/lexer.c
+BUFFER_SOURCE := source/buffer.c
+REO_SOURCE := source/reo.c
+SEMANTIZER_SOURCE := source/semantizer.c
 
-OBJECTS := $(BUILD)/out/lexer.o $(BUILD)/out/reocore.o $(BUILD)/out/reoread.o $(BUILD)/out/reowrite.o
+OBJECTS := $(BUILD)/out/lexer.o $(BUILD)/out/buffer.o $(BUILD)/out/reo.o $(BUILD)/out/semantizer.o
 
 
 .PHONY: init test clean install
@@ -21,13 +21,13 @@ all: init $(BUILD)/libcxsh.so test
 $(BUILD)/out/lexer.o: $(LEXER_SOURCE)
 	clang $(CFLAGS) $? -c -o $@
 
-$(BUILD)/out/reocore.o: $(REO_CORE_SOURCE)
+$(BUILD)/out/buffer.o: $(BUFFER_SOURCE)
 	clang $(CFLAGS) $? -c -o $@
 
-$(BUILD)/out/reoread.o: $(REO_READ_SOURCE)
+$(BUILD)/out/reo.o: $(REO_SOURCE)
 	clang $(CFLAGS) $? -c -o $@
 
-$(BUILD)/out/reowrite.o: $(REO_WRITE_SOURCE)
+$(BUILD)/out/semantizer.o: $(SEMANTIZER_SOURCE)
 	clang $(CFLAGS) $? -c -o $@
 
 $(BUILD)/libcxsh.so: $(OBJECTS)
@@ -39,6 +39,8 @@ clean:
 test: $(OBJECTS) 
 	clang $(CFLAGS) $? tests/lex.c -o $(BUILD)/test/lex
 	clang $(CFLAGS) $? tests/reotest.c -o $(BUILD)/test/reotest
+	clang $(CFLAGS) $? tests/buffer.c -o $(BUILD)/test/buffer
+	clang $(CFLAGS) $? tests/semantize.c -o $(BUILD)/test/semantize
 
 	./scripts/test.sh $(BUILD)
 	

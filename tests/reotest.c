@@ -6,48 +6,62 @@
 #include <stdio.h>
 #include <string.h>
 
-uint8_t code[] = {
+uint8_t unpatched_code[] = {
 	0x05, 0x00, 
 	0x00, 0x01, 
 	0b11000000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 // add $1, $1 
 };
 
+uint8_t patched_code[] = {
+	0x05, 0x00, 
+	0x00, 0x01, 
+	0b11000000, 0x44, 0x11, 0x44, 0x11, 0x00, 0x00, 0x00, 0x00 // add $1, $1 
+};
+
 uint8_t data[] = "hello world";
 
-uint8_t deleted[] = {
-	#embed "deleted.cxo" 
-};
 
-uint8_t undeleted[] = {
-	#embed "undeleted.cxo" 
-};
+void create_test(void) {
+	reo_file_t file = {0};
+	reo_file_init(&file);
 
-int main() {
-	REOFile_t *file = createREOFile();
-	addREOString(file, "stray1144");
-	writeREOCode(file, code, sizeof(code));
-	uint64_t address = 0x1234567890;
-	patchREOCode(file, 5, &address, 8);
+	reo_offset_t string = reo_string_add(&file, "some_data");
+	reo_string_add(&file, "stray1144");
+	test_assert(string == 0, "First added string index isn't 0. weird");
 
-	offset_t prefix = addREOString(file, "text");
-	(void)(prefix);
+	reo_code_write(&file, unpatched_code, sizeof(unpatched_code));
+	test_assert(memcmp(buffer_get(&file.code, 0), unpatched_code, sizeof(unpatched_code)) == 0, "Data is wrong");
 
-	addREOEmbed(file, prefix, data, sizeof(data));
-	addREOSymbol(file, addREOString(file, "__entry"), 0x100, 8, 0);
-	addREOSymbol(file, addREOString(file, "loop_r1"), 0x100, 8, 0);
+	uint64_t weird_address = 0x11441144;
+	uint64_t picky_address = 0x44114411;
+	reo_code_patch(&file, 5, &weird_address, 8);
+	test_assert(memcmp(buffer_get(&file.code, 0), patched_code, sizeof(patched_code)) == 0, "Patched data is wrong");
 
-	test_assert(memcmp(undeleted, file->data, sizeof(undeleted)) == 0, "The data with no deleted entries doesn't match");
+	reo_data_add(&file, &weird_address, sizeof(weird_address));
+	reo_data_add(&file, &picky_address, sizeof(picky_address));
 
-	while(true) {
-		REOEntry_t *entry = getNextREOEntry(file);
-		if(!entry) break;
-		printf("removing entry %s (%d) sized %d\n", getREOString(file, entry->name), entry->type, entry->size);
-		removeREOEntry(file, entry);	
-	}
-	
-	test_assert(memcmp(deleted, file->data, sizeof(deleted)) == 0, "The data with deleted entries doesn't match");
+	reo_embed_add(&file, string, data, sizeof(data));
+	reo_symbol_add(&file, string, weird_address, 8, REO_SYMBOL_OBJECT);
+	reo_relocation_add(&file, string, picky_address, REO_RELOCATION_ABSOLUTE);
+	reo_import_add(&file, string, reo_string_add(&file, "1.0.0"), REO_IMPORT_OBJECT);
+	reo_export_add(&file, string, weird_address, 8, REO_EXPORT_OBJECT);
 
-	destroyREOFile(file);
+	reo_file_save(&file, "test.cxo");
+	reo_file_clear(&file);
+
+}
+
+void load_test(void) {
+	// reo_file_t file = {0};
+	// reo_file_load(&file, "test.cxo");
+	//
+	//
+	//
+}
+
+int main(void) {
+	create_test();
+	load_test();
 
 	return 0;
 }
