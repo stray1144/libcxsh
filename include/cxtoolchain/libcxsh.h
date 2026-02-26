@@ -109,7 +109,7 @@ typedef size_t (semantizer_reductor_callback_t)(semantizer_t *semantizer, semant
 typedef struct semantizer_pattern_s {
 	semantizer_matcher_callback_t *match;
 	semantizer_reductor_callback_t *reduct;
-	uint64_t precedence;
+	uint64_t level;
 } semantizer_pattern_t;
 
 typedef bool (semantizer_forge_callback_t)(semantizer_unit_t *unit, lexer_token_t *token);
@@ -117,31 +117,45 @@ typedef bool (semantizer_forge_callback_t)(semantizer_unit_t *unit, lexer_token_
 
 typedef struct semantizer_s {
 	buffer_t stream;
-	semantizer_pattern_t *patterns;
-	size_t pattern_count;
 
 	semantizer_forge_callback_t **forge_callbacks;
 	size_t forge_callback_count;
 
-	uint64_t cycles;
+	semantizer_pattern_t *patterns;
+	size_t pattern_count;
+
+	uint64_t level_count;
+	uint64_t actual_level;
+
+	uint64_t pass_count;
 } semantizer_t;
+
+typedef enum semantizer_forge_status_e {
+	FORGE_SUCCESS,
+	FORGE_UNHANDLED
+} semantizer_forge_status_t;
+
+typedef struct semantizer_forge_result_s {
+	semantizer_forge_status_t status;	
+	size_t at;
+} semantizer_forge_result_t;
 
 bool semantizer_unit_init(semantizer_unit_t *unit, semantizer_unit_kind_t kind, void *data, semantizer_data_free_t *data_free);
 void semantizer_unit_clear(semantizer_unit_t *unit);
 
-// bool semantizer_stream_insert(semantizer_t *semantizer, size_t index, semantizer_unit_t *data, size_t count);
-// bool semantizer_stream_append(semantizer_t *semantizer, semantizer_unit_t *data, size_t count);
-// bool semantizer_stream_remove(semantizer_t *semantizer, size_t index, size_t count);
+semantizer_unit_kind_t semantizer_stream_get(semantizer_t *semantizer, size_t index);
 bool semantizer_stream_match(semantizer_t *semantizer, size_t index, semantizer_unit_kind_t kind);
+void semantizer_stream_peek(semantizer_t *semantizer, size_t index, void **target, semantizer_data_free_t **target_free);
 void semantizer_stream_steal(semantizer_t *semantizer, size_t index, void **target, semantizer_data_free_t **target_free);
+size_t semantizer_stream_size(semantizer_t *semantizer);
 
 bool semantizer_init(semantizer_t *semantizer);
 void semantizer_clear(semantizer_t *semantizer);
 
-void semantizer_pattern_setup(semantizer_t *semantizer, semantizer_pattern_t *patterns, size_t pattern_count);
+void semantizer_pattern_setup(semantizer_t *semantizer, semantizer_pattern_t *patterns, size_t pattern_count, size_t level_count);
 
 void semantizer_forge_setup(semantizer_t *semantizer, semantizer_forge_callback_t **callbacks, size_t callback_count);
-bool semantizer_forge_atomize(semantizer_t *semantizer, lexer_token_t *array, size_t array_size);
+semantizer_forge_result_t semantizer_forge_atomize(semantizer_t *semantizer, lexer_token_t *array, size_t array_size);
 
 void semantize(semantizer_t *semantizer);
 

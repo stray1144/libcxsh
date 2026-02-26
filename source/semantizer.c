@@ -24,25 +24,34 @@ void semantizer_unit_clear(semantizer_unit_t *unit) {
 	memset(unit, 0, sizeof(semantizer_unit_t));
 }
 
-// bool semantizer_stream_insert(semantizer_t *semantizer, size_t index, semantizer_unit_t *data, size_t count);
-// bool semantizer_stream_append(semantizer_t *semantizer, semantizer_unit_t *data, size_t count);
-// bool semantizer_stream_remove(semantizer_t *semantizer, size_t index, size_t count);
-bool semantizer_stream_match(semantizer_t *semantizer, size_t index, semantizer_unit_kind_t kind) {
+semantizer_unit_kind_t semantizer_stream_get(semantizer_t *semantizer, size_t index) {
 	semantizer_unit_t *unit = buffer_get(&semantizer->stream, index);
-	if(unit == nullptr) return false;
+	if(unit == nullptr) return 0;
 
-	return unit->kind == kind;
+	return unit->kind;
 }
+
+bool semantizer_stream_match(semantizer_t *semantizer, size_t index, semantizer_unit_kind_t kind) {
+	return semantizer_stream_get(semantizer, index) == kind;
+}
+
+void semantizer_stream_peek(semantizer_t *semantizer, size_t index, void **target, semantizer_data_free_t **target_free) {
+	semantizer_unit_t *unit = buffer_get(&semantizer->stream, index);
+	if(target != nullptr) *target = unit->data;
+	if(target_free != nullptr) *target_free = unit->data_free;
+}
+
 void semantizer_stream_steal(semantizer_t *semantizer, size_t index, void **target, semantizer_data_free_t **target_free) {
 	semantizer_unit_t *unit = buffer_get(&semantizer->stream, index);
-	if(target != nullptr) {
-		*target = unit->data;
-		unit->data = nullptr;
-	}
-	if(target_free != nullptr) {
-		*target_free = unit->data_free;
-		unit->data_free = SEMANTIZER_DATA_FREE_NONE;
-	}
+
+	semantizer_stream_peek(semantizer, index, target, target_free);	
+
+	if(target != nullptr) unit->data = nullptr;
+	if(target_free != nullptr) unit->data_free = SEMANTIZER_DATA_FREE_NONE;
+}
+
+size_t semantizer_stream_size(semantizer_t *semantizer) {
+	return semantizer->stream.used;
 }
 
 bool semantizer_init(semantizer_t *semantizer) {
@@ -68,9 +77,10 @@ void semantizer_clear(semantizer_t *semantizer) {
 	memset(semantizer, 0, sizeof(semantizer_t));
 }
 
-void semantizer_pattern_setup(semantizer_t *semantizer, semantizer_pattern_t *patterns, size_t pattern_count) {
+void semantizer_pattern_setup(semantizer_t *semantizer, semantizer_pattern_t *patterns, size_t pattern_count, size_t level_count) {
 	semantizer->patterns = patterns;
 	semantizer->pattern_count = pattern_count;
+	semantizer->level_count = level_count;
 }
 
 void semantizer_forge_setup(semantizer_t *semantizer, semantizer_forge_callback_t **callbacks, size_t callback_count) {
@@ -87,6 +97,10 @@ bool semantizer_forge_callback_run(semantizer_t *semantizer, size_t index, seman
 	return callback(unit, token);
 }
 
+semantizer_forge_result_t semantizer_forge_result(semantizer_forge_status_t status, size_t at) {
+	return (semantizer_forge_result_t) {status, at};
+}
+
 bool semantizer_forge_convert(semantizer_t *semantizer, lexer_token_t *token) {
 	for(size_t i = 0; i < semantizer->forge_callback_count; i++) {
 		semantizer_unit_t unit = {0};
@@ -100,13 +114,13 @@ bool semantizer_forge_convert(semantizer_t *semantizer, lexer_token_t *token) {
 	return false;
 }
 
-bool semantizer_forge_atomize(semantizer_t *semantizer, lexer_token_t *array, size_t array_size) {
+semantizer_forge_result_t semantizer_forge_atomize(semantizer_t *semantizer, lexer_token_t *array, size_t array_size) {
 	for (size_t i = 0; i < array_size; i++) {
 		bool status = semantizer_forge_convert(semantizer, &array[i]);
-		if(status == false) return false;
+		if(status == false) return semantizer_forge_result(FORGE_UNHANDLED, i);
 	}
 
-	return true;
+	return semantizer_forge_result(FORGE_SUCCESS, 0);
 }
 
 bool semantizer_matcher_callback_run(semantizer_t *semantizer, size_t pattern_index, size_t semantic_index) {
@@ -133,6 +147,10 @@ bool semantizer_pattern_handle(semantizer_t *semantizer, size_t pattern_index, s
 	semantizer_unit_t unit = {0};
 	size_t size = semantizer_reductor_callback_run(semantizer, pattern_index, &unit, semantic_index);
 
+	for(size_t i = 0; i < size; i++) {
+		semantizer_unit_t *element = buffer_get(&semantizer->stream, semantic_index + i);
+		semantizer_unit_clear(element);
+	}
 	buffer_remove(&semantizer->stream, semantic_index, size);
 	buffer_insert(&semantizer->stream, semantic_index, &unit, 1);
 	return true;
@@ -140,12 +158,13 @@ bool semantizer_pattern_handle(semantizer_t *semantizer, size_t pattern_index, s
 
 bool semantizer_process(semantizer_t *semantizer, size_t index) {
 	for(size_t i = 0; i < semantizer->pattern_count; i++) {
+		if(semantizer->patterns[index].level != semantizer->actual_level) continue;
 		if(semantizer_pattern_handle(semantizer, i, index)) return true;
 	}
 	return false;
 }
 
-bool semantizer_cycle(semantizer_t *semantizer) {
+bool semantizer_pass(semantizer_t *semantizer) {
 	uint64_t reductions_made = 0;
 
 	for(size_t i = 0; i < semantizer->stream.used; i++) {
@@ -154,10 +173,15 @@ bool semantizer_cycle(semantizer_t *semantizer) {
 		if(status == true) reductions_made++;
 	}
 
-	semantizer->cycles++;
+	semantizer->pass_count++;
 	return reductions_made != 0;
 }
 
+void semantizer_level_run(semantizer_t *semantizer) {
+	while(semantizer_pass(semantizer));
+	semantizer->actual_level++;
+}
+
 void semantize(semantizer_t *semantizer) {
-	while(semantizer_cycle(semantizer));
+	while(semantizer->actual_level != semantizer->level_count) semantizer_level_run(semantizer);
 }

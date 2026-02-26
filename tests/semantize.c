@@ -101,6 +101,9 @@ semantizer_forge_callback_t *forge_callbacks[FORGE_CALLBACKS] = {
 	right_parenthesis_handle
 };
 
+// instruction -> mnemonic
+
+
 // ler (lparen-expression-rparen)
 bool ler_match(semantizer_t *semantizer, size_t index) {
 	return  semantizer_stream_match(semantizer, index, SEMANTIC_LEFT_PARENTHESIS) && 
@@ -239,14 +242,14 @@ int main(void) {
 	semantizer_init(&semantizer);
 
 	semantizer_forge_setup(&semantizer, forge_callbacks, FORGE_CALLBACKS);
-	bool status = semantizer_forge_atomize(&semantizer, buffer_get(&buffer, 0), buffer.used);
+	semantizer_forge_result_t status = semantizer_forge_atomize(&semantizer, buffer_get(&buffer, 0), buffer.used);
 	
-	test_assert(status == true, "atomizing failed");
+	test_assert(status.status == FORGE_SUCCESS, "atomizing failed");
 
 	// __semantizer_stream_print(&semantizer);
 	// printf("---- REDUCT ----\n");
 
-	semantizer_pattern_setup(&semantizer, patterns, PATTERNS);
+	semantizer_pattern_setup(&semantizer, patterns, PATTERNS, 1);
 	semantize(&semantizer);
 
 	// __semantizer_stream_print(&semantizer);
@@ -259,7 +262,6 @@ int main(void) {
 	semantizer_clear(&semantizer);
 	buffer_clear(&buffer);
 
-	// printf("%lu\n", x);
 	test_assert(x == 25, "failed evaluation :p");
 
 	free(expression);
