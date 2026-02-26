@@ -127,6 +127,10 @@ typedef struct semantizer_s {
 	uint64_t level_count;
 	uint64_t actual_level;
 
+	bool debug_enable;
+	char **semantic_names;
+	size_t name_offset;
+
 	uint64_t pass_count;
 } semantizer_t;
 
@@ -156,6 +160,8 @@ void semantizer_pattern_setup(semantizer_t *semantizer, semantizer_pattern_t *pa
 
 void semantizer_forge_setup(semantizer_t *semantizer, semantizer_forge_callback_t **callbacks, size_t callback_count);
 semantizer_forge_result_t semantizer_forge_atomize(semantizer_t *semantizer, lexer_token_t *array, size_t array_size);
+
+void semantizer_debug_setup(semantizer_t *semantizer, bool debug_enable, char **semantic_names, size_t name_offset);
 
 void semantize(semantizer_t *semantizer);
 

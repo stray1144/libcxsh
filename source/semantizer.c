@@ -158,10 +158,27 @@ bool semantizer_pattern_handle(semantizer_t *semantizer, size_t pattern_index, s
 
 bool semantizer_process(semantizer_t *semantizer, size_t index) {
 	for(size_t i = 0; i < semantizer->pattern_count; i++) {
-		if(semantizer->patterns[index].level != semantizer->actual_level) continue;
+		if(semantizer->patterns[i].level != semantizer->actual_level) continue;
 		if(semantizer_pattern_handle(semantizer, i, index)) return true;
 	}
 	return false;
+}
+
+void semantizer_debug_setup(semantizer_t *semantizer, bool debug_enable, char **semantic_names, size_t name_offset) {
+	semantizer->debug_enable = debug_enable;
+	semantizer->semantic_names = semantic_names;
+	semantizer->name_offset = name_offset;
+}
+
+void semantizer_debug(semantizer_t *semantizer) {
+	if(semantizer->debug_enable == false) return;
+	printf("[forge_callbacks: %p, forge_callback_count: %zu, patterns: %p, pattern_count: %zu, level_count: %lu, actual_level: %lu, pass_count: %lu]\n", semantizer->forge_callbacks, semantizer->forge_callback_count, semantizer->patterns, semantizer->pattern_count, semantizer->level_count, semantizer->actual_level, semantizer->pass_count);
+	printf("( ");
+	for(size_t i = 0; i < semantizer->stream.used; i++) {
+		semantizer_unit_t *unit = buffer_get(&semantizer->stream, i);
+		printf("%s ", semantizer->semantic_names[unit->kind] + semantizer->name_offset);
+	}
+	printf(")\n");
 }
 
 bool semantizer_pass(semantizer_t *semantizer) {
@@ -172,6 +189,8 @@ bool semantizer_pass(semantizer_t *semantizer) {
 		
 		if(status == true) reductions_made++;
 	}
+
+	semantizer_debug(semantizer);
 
 	semantizer->pass_count++;
 	return reductions_made != 0;
