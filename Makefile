@@ -9,55 +9,36 @@ PREFIX ?= /usr
 INCLUDE_INSTALL := $(PREFIX)/include
 LIB_INSTALL := $(PREFIX)/lib64
 
-LEXER_SOURCE := source/lexer.c
-BUFFER_SOURCE := source/buffer.c
-REO_SOURCE := source/reo.c
-SEMANTIZER_SOURCE := source/semantizer.c
+SOURCE := source/lexer.c source/buffer.c source/reo.c source/semantizer.c
+HEADERS := include/cxtoolchain/libcxsh.h
+OBJECTS := $(patsubst source/%.c, build/objects/%.o, $(SOURCE))
 
-OBJECTS := $(BUILD)/out/lexer.o $(BUILD)/out/buffer.o $(BUILD)/out/reo.o $(BUILD)/out/semantizer.o
+.PHONY: test install
 
+all: $(BUILD)/libcxsh.so $(BUILD)/libcxsh.a test
 
-.PHONY: init test clean install
+$(BUILD)/objects/%.o: source/%.c $(HEADERS) | build 
+	@$(CC) $(CFLAGS) -c $< -o $@
 
-all: init $(BUILD)/libcxsh.so $(BUILD)/libcxsh.a test
-
-$(BUILD)/out/lexer.o: $(LEXER_SOURCE)
-	clang $(CFLAGS) $? -c -o $@
-
-$(BUILD)/out/buffer.o: $(BUFFER_SOURCE)
-	clang $(CFLAGS) $? -c -o $@
-
-$(BUILD)/out/reo.o: $(REO_SOURCE)
-	clang $(CFLAGS) $? -c -o $@
-
-$(BUILD)/out/semantizer.o: $(SEMANTIZER_SOURCE)
-	clang $(CFLAGS) $? -c -o $@
-
-$(BUILD)/libcxsh.so: $(OBJECTS)
-	clang $? -shared -o $@
-
-$(BUILD)/libcxsh.a: $(OBJECTS)
-	$(AR) rcs $@ $^
-
-clean:
-	@rm -rf $(BUILD)
-
-test: $(OBJECTS) 
-	clang $(CFLAGS) $? tests/lex.c -o $(BUILD)/test/lex
-	clang $(CFLAGS) $? tests/reotest.c -o $(BUILD)/test/reotest
-	clang $(CFLAGS) $? tests/buffer.c -o $(BUILD)/test/buffer
-	clang $(CFLAGS) $? tests/semantize.c -o $(BUILD)/test/semantize
-
-	./scripts/test.sh $(BUILD)
-	
-
-init: clean
-	@mkdir -p $(BUILD)/out
+$(BUILD):
+	@mkdir -p $(BUILD)/objects
 	@mkdir -p $(BUILD)/test
 
-install: all
-	mkdir -p $(DESTDIR)/$(LIB_INSTALL)
-	mkdir -p $(DESTDIR)/$(INCLUDE_INSTALL)/cxtoolchain
+$(BUILD)/libcxsh.so: $(OBJECTS)
+	@clang $? -shared -o $@
 
-	install -m 755 $(BUILD)/libcxsh.so $(DESTDIR)/$(LIB_INSTALL)
-	install -m 644 include/cxtoolchain/libcxsh.h $(DESTDIR)/$(INCLUDE_INSTALL)/cxtoolchain
+$(BUILD)/libcxsh.a: $(OBJECTS)
+	@$(AR) rcs $@ $^
+
+test: $(OBJECTS) 
+	@clang $(CFLAGS) $? tests/lex.c -o $(BUILD)/test/lex
+	@clang $(CFLAGS) $? tests/reotest.c -o $(BUILD)/test/reotest
+	@clang $(CFLAGS) $? tests/buffer.c -o $(BUILD)/test/buffer
+	@clang $(CFLAGS) $? tests/semantize.c -o $(BUILD)/test/semantize
+	@./scripts/test.sh $(BUILD)
+
+install: all
+	@mkdir -p $(DESTDIR)/$(LIB_INSTALL)
+	@mkdir -p $(DESTDIR)/$(INCLUDE_INSTALL)/cxtoolchain
+	@install -m 755 $(BUILD)/libcxsh.so $(DESTDIR)/$(LIB_INSTALL)
+	@install -m 644 include/cxtoolchain/libcxsh.h $(DESTDIR)/$(INCLUDE_INSTALL)/cxtoolchain
