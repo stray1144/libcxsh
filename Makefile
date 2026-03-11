@@ -1,3 +1,6 @@
+CC ?= clang
+AR ?= ar
+
 BUILD := build
 CFLAGS := -Wall -Wextra -Werror -g -Iinclude -fPIC -std=c23
 
@@ -16,7 +19,7 @@ OBJECTS := $(BUILD)/out/lexer.o $(BUILD)/out/buffer.o $(BUILD)/out/reo.o $(BUILD
 
 .PHONY: init test clean install
 
-all: init $(BUILD)/libcxsh.so test
+all: init $(BUILD)/libcxsh.so $(BUILD)/libcxsh.a test
 
 $(BUILD)/out/lexer.o: $(LEXER_SOURCE)
 	clang $(CFLAGS) $? -c -o $@
@@ -32,6 +35,9 @@ $(BUILD)/out/semantizer.o: $(SEMANTIZER_SOURCE)
 
 $(BUILD)/libcxsh.so: $(OBJECTS)
 	clang $? -shared -o $@
+
+$(BUILD)/libcxsh.a: $(OBJECTS)
+	$(AR) rcs $@ $^
 
 clean:
 	@rm -rf $(BUILD)
