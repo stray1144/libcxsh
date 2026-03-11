@@ -24,6 +24,17 @@ void semantizer_unit_clear(semantizer_unit_t *unit) {
 	memset(unit, 0, sizeof(semantizer_unit_t));
 }
 
+void semantizer_stream_trace(semantizer_t *semantizer, semantizer_unit_t *tracer, size_t index) {
+	semantizer_unit_t *unit = buffer_get(&semantizer->stream, index);
+	if(unit == nullptr) return;
+
+	tracer->position = unit->position;
+}
+
+void semantizer_token_trace(semantizer_unit_t *tracer, lexer_token_t *token) {
+	tracer->position = token->position;
+}
+
 semantizer_unit_kind_t semantizer_stream_get(semantizer_t *semantizer, size_t index) {
 	semantizer_unit_t *unit = buffer_get(&semantizer->stream, index);
 	if(unit == nullptr) return 0;
@@ -105,10 +116,10 @@ bool semantizer_forge_convert(semantizer_t *semantizer, lexer_token_t *token) {
 	for(size_t i = 0; i < semantizer->forge_callback_count; i++) {
 		semantizer_unit_t unit = {0};
 
-		if(semantizer_forge_callback_run(semantizer, i, &unit, token) == true) {
-			buffer_append(&semantizer->stream, &unit, 1);
-			return true;
-		}
+		if(semantizer_forge_callback_run(semantizer, i, &unit, token) == false) continue;
+		
+		buffer_append(&semantizer->stream, &unit, 1);
+		return true;
 	}
 
 	return false;
@@ -164,21 +175,53 @@ bool semantizer_process(semantizer_t *semantizer, size_t index) {
 	return false;
 }
 
-void semantizer_debug_setup(semantizer_t *semantizer, bool debug_enable, char **semantic_names, size_t name_offset) {
+void semantizer_debug_setup(semantizer_t *semantizer, 
+			    bool debug_enable, 
+			    char **semantic_names, size_t name_offset, 
+			    semantizer_log_callback_t *logger_function, void *logger_context) {
 	semantizer->debug_enable = debug_enable;
+	
 	semantizer->semantic_names = semantic_names;
 	semantizer->name_offset = name_offset;
+	
+	semantizer->logger_function = logger_function;
+	semantizer->logger_context = logger_context;
 }
+
+#define SEMANTIZER_LOG(semantizer, message) semantizer->logger_function(semantizer->logger_context, semantizer->logger_level, message)
 
 void semantizer_debug(semantizer_t *semantizer) {
 	if(semantizer->debug_enable == false) return;
-	printf("[forge_callbacks: %p, forge_callback_count: %zu, patterns: %p, pattern_count: %zu, level_count: %lu, actual_level: %lu, pass_count: %lu]\n", semantizer->forge_callbacks, semantizer->forge_callback_count, semantizer->patterns, semantizer->pattern_count, semantizer->level_count, semantizer->actual_level, semantizer->pass_count);
-	printf("( ");
+	
+	char buffer[3072];
+	memset(buffer, 0, 3072);
+
+	snprintf(buffer, 3072, 
+	  "[forge_callbacks: %p, forge_callback_count: %zu, patterns: %p, pattern_count: %zu, level_count: %d, actual_level: %d, pass_count: %d]", 
+	  semantizer->forge_callbacks, semantizer->forge_callback_count, 
+	  semantizer->patterns, semantizer->pattern_count, 
+	  semantizer->level_count, semantizer->actual_level, 
+	  semantizer->pass_count);
+
+	SEMANTIZER_LOG(semantizer, buffer);
+
+	memset(buffer, 0, 3072);
+	strlcat(buffer, "{ ", 3072);
+
 	for(size_t i = 0; i < semantizer->stream.used; i++) {
 		semantizer_unit_t *unit = buffer_get(&semantizer->stream, i);
-		printf("%s ", semantizer->semantic_names[unit->kind] + semantizer->name_offset);
+
+		char unit_display[256];
+		memset(unit_display, 0, 256);
+
+		snprintf(unit_display, 256, "%s@%d ", semantizer->semantic_names[unit->kind] + semantizer->name_offset, unit->position);
+
+		strlcat(buffer, unit_display, 3072);
 	}
-	printf(")\n");
+
+	strlcat(buffer, "}", 3072);
+
+	SEMANTIZER_LOG(semantizer, buffer);
 }
 
 bool semantizer_pass(semantizer_t *semantizer) {
@@ -186,11 +229,12 @@ bool semantizer_pass(semantizer_t *semantizer) {
 
 	for(size_t i = 0; i < semantizer->stream.used; i++) {
 		bool status = semantizer_process(semantizer, i);
-		
-		if(status == true) reductions_made++;
-	}
 
-	semantizer_debug(semantizer);
+		if(status == false) continue;
+
+		semantizer_debug(semantizer);
+		reductions_made++;
+	}
 
 	semantizer->pass_count++;
 	return reductions_made != 0;
@@ -202,5 +246,6 @@ void semantizer_level_run(semantizer_t *semantizer) {
 }
 
 void semantize(semantizer_t *semantizer) {
+	semantizer_debug(semantizer);
 	while(semantizer->actual_level != semantizer->level_count) semantizer_level_run(semantizer);
 }

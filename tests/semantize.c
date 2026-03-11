@@ -33,11 +33,25 @@ enum semantizer_unit_kind_e : uint32_t {
 	SEMANTIC_EXPRESSION
 };
 
+static const char *semantic_names[9] = {
+	"SEMANTIC_INVALID",
+	"SEMANTIC_NUMBER",
+	"SEMANTIC_PLUS",
+	"SEMANTIC_MINUS",
+	"SEMANTIC_ASTERISK",
+	"SEMANTIC_SLASH",
+	"SEMANTIC_LEFT_PARENTHESIS",
+	"SEMANTIC_RIGHT_PARENTHESIS",
+	
+	// COMPOUNDS GO HERE!
+	"SEMANTIC_EXPRESSION"
+};
 
 bool number_handle(semantizer_unit_t *unit, lexer_token_t *token) {
 	if((token->kind != LEXER_TOKEN_INTEGER_LITERAL) && (token->kind != LEXER_TOKEN_HEXADECIMAL_LITERAL)) return false;
 
 	semantizer_unit_init(unit, SEMANTIC_NUMBER, &token->number, SEMANTIZER_DATA_FREE_NONE);
+	semantizer_token_trace(unit, token);
 
 	return true;
 }
@@ -46,6 +60,7 @@ bool plus_handle(semantizer_unit_t *unit, lexer_token_t *token) {
 	if((token->kind != LEXER_TOKEN_PUNCTUATION) || (token->character != '+')) return false;
 
 	semantizer_unit_init(unit, SEMANTIC_PLUS, nullptr, SEMANTIZER_DATA_FREE_NONE);
+	semantizer_token_trace(unit, token);
 
 	return true;
 }
@@ -54,6 +69,7 @@ bool minus_handle(semantizer_unit_t *unit, lexer_token_t *token) {
 	if((token->kind != LEXER_TOKEN_PUNCTUATION) || (token->character != '-')) return false;
 
 	semantizer_unit_init(unit, SEMANTIC_MINUS, nullptr, SEMANTIZER_DATA_FREE_NONE);
+	semantizer_token_trace(unit, token);
 
 	return true;
 }
@@ -62,6 +78,7 @@ bool asterisk_handle(semantizer_unit_t *unit, lexer_token_t *token) {
 	if((token->kind != LEXER_TOKEN_PUNCTUATION) || (token->character != '*')) return false;
 
 	semantizer_unit_init(unit, SEMANTIC_ASTERISK, nullptr, SEMANTIZER_DATA_FREE_NONE);
+	semantizer_token_trace(unit, token);
 
 	return true;
 }
@@ -70,6 +87,7 @@ bool slash_handle(semantizer_unit_t *unit, lexer_token_t *token) {
 	if((token->kind != LEXER_TOKEN_PUNCTUATION) || (token->character != '/')) return false;
 
 	semantizer_unit_init(unit, SEMANTIC_SLASH, nullptr, SEMANTIZER_DATA_FREE_NONE);
+	semantizer_token_trace(unit, token);
 
 	return true;
 }
@@ -78,6 +96,7 @@ bool left_parenthesis_handle(semantizer_unit_t *unit, lexer_token_t *token) {
 	if((token->kind != LEXER_TOKEN_PUNCTUATION) || (token->character != '(')) return false;
 
 	semantizer_unit_init(unit, SEMANTIC_LEFT_PARENTHESIS, nullptr, SEMANTIZER_DATA_FREE_NONE);
+	semantizer_token_trace(unit, token);
 
 	return true;
 }
@@ -86,6 +105,7 @@ bool right_parenthesis_handle(semantizer_unit_t *unit, lexer_token_t *token) {
 	if((token->kind != LEXER_TOKEN_PUNCTUATION) || (token->character != ')')) return false;
 
 	semantizer_unit_init(unit, SEMANTIC_RIGHT_PARENTHESIS, nullptr, SEMANTIZER_DATA_FREE_NONE);
+	semantizer_token_trace(unit, token);
 
 	return true;
 }
@@ -114,6 +134,7 @@ bool ler_match(semantizer_t *semantizer, size_t index) {
 size_t ler_reduct(semantizer_t *semantizer, semantizer_unit_t *unit, size_t start) {
 	semantizer_unit_init(unit, SEMANTIC_EXPRESSION, 0, SEMANTIZER_DATA_FREE_NONE);
 	semantizer_stream_steal(semantizer, start + 1, &unit->data, &unit->data_free);
+	semantizer_stream_trace(semantizer, unit, start + 1);
 
 	return 3;
 }
@@ -199,6 +220,7 @@ size_t xox_reduct(semantizer_t *semantizer, semantizer_unit_t *unit, size_t star
 	if(semantizer_stream_match(semantizer, start + 1, SEMANTIC_SLASH)) expression = expression_create(EXPRESSION_DIVIDE, lhs, rhs);
 
 	semantizer_unit_init(unit, SEMANTIC_EXPRESSION, expression, free);
+	semantizer_stream_trace(semantizer, unit, start);
 
 	return 3;
 }
@@ -224,12 +246,10 @@ void tokens_get(buffer_t *buffer, char *string) {
 	lexer_clear(&lexer);
 }
 
-
-void __semantizer_stream_print(semantizer_t *semantizer) {
-	for(size_t i = 0; i < semantizer->stream.used; i++) {
-		semantizer_unit_t *unit = buffer_get(&semantizer->stream, i);
-		printf("stream index %zu: %d\n", i, unit->kind);
-	}
+void debug(void *context, uint32_t level, char *message) {
+	(void) (context);
+	(void) (level);
+	printf("[DEBUG] %s\n", message);
 }
 
 int main(void) {
@@ -246,14 +266,13 @@ int main(void) {
 	
 	test_assert(status.status == FORGE_SUCCESS, "atomizing failed");
 
-	// __semantizer_stream_print(&semantizer);
-	// printf("---- REDUCT ----\n");
+	semantizer_debug_setup(&semantizer, 
+			false, // set to true to get debugging
+			(void *)semantic_names, 9, 
+			(void *)debug, nullptr);
 
 	semantizer_pattern_setup(&semantizer, patterns, PATTERNS, 1);
 	semantize(&semantizer);
-
-	// __semantizer_stream_print(&semantizer);
-	// printf("done in %lu cycles\n", semantizer.cycles);
 
 	expression_t *expression = nullptr;
 	semantizer_stream_steal(&semantizer, 0, (void *)&expression, nullptr);

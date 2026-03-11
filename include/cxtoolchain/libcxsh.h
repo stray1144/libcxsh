@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define _BSD_SOURCE
+
 #define __packed __attribute__((__packed__))
 
 // lexer
@@ -23,17 +25,20 @@ typedef enum lexer_token_kind_e {
 	LEXER_TOKEN_NEWLINE,
 } lexer_token_kind_t;
 
-typedef struct lexer_slice_s {
+typedef uint32_t lexer_position_t;
+
+typedef struct lexer_span_s {
 	char *base;
-	size_t length;
-} lexer_slice_t;
+	lexer_position_t length; 
+} lexer_span_t;
 
 typedef struct lexer_token_s {
 	lexer_token_kind_t kind;
+	lexer_position_t position;
 	union {
 		int64_t number;
-		double _float;
-		lexer_slice_t string;
+		float real;
+		lexer_span_t string;
 		char character;
 	};
 } lexer_token_t;
@@ -45,8 +50,9 @@ typedef bool (lexer_callback_t)(lexer_t *lexer, lexer_token_t *token);
 
 struct lexer_s {
 	char *data;
-	uint64_t consumed;
 	lexer_callback_t *callback[LEXER_TOKEN_KIND_COUNT];
+
+	lexer_position_t consumed;
 };
 
 bool lexer_init(lexer_t *lexer, char *data);
@@ -56,7 +62,9 @@ bool lexer_callback_run(lexer_t *lexer, lexer_token_t *token, lexer_token_kind_t
 void lexer_callback_set(lexer_t *lexer, lexer_token_kind_t kind, lexer_callback_t *callback);
 
 char *lexer_string_get(lexer_t *lexer);
-void lexer_advance(lexer_t *lexer, uint64_t steps);
+void lexer_advance(lexer_t *lexer, lexer_position_t steps);
+
+lexer_position_t lexer_position_get(lexer_t *lexer);
 
 bool lex(lexer_t *lexer, lexer_token_t *token);
 
@@ -70,7 +78,6 @@ typedef struct buffer_s {
 	size_t used;
 	size_t object_size;
 	size_t capacity;
-	uint64_t generation;
 } buffer_t;
 
 bool buffer_init(buffer_t *buffer, size_t object_size);
@@ -96,6 +103,7 @@ typedef void (semantizer_data_free_t)(void *data);
 
 typedef struct semantizer_unit_s {
 	semantizer_unit_kind_t kind;
+	lexer_position_t position; // HERE. uses these 4 lost padding bytes, so structure is still 24 bytes
 	void *data;
 	semantizer_data_free_t *data_free;
 } semantizer_unit_t;
@@ -115,6 +123,9 @@ typedef struct semantizer_pattern_s {
 typedef bool (semantizer_forge_callback_t)(semantizer_unit_t *unit, lexer_token_t *token);
 #define SEMANTIZER_FORGE_CALLBACK_NONE (semantizer_forge_callback_t *)(0)
 
+typedef void (semantizer_log_callback_t)(void *context, uint32_t level, const char *message);
+#define SEMANTIZER_LOG_CALLBACK_NONE (semantizer_log_callback_t *)(0)
+
 typedef struct semantizer_s {
 	buffer_t stream;
 
@@ -124,14 +135,19 @@ typedef struct semantizer_s {
 	semantizer_pattern_t *patterns;
 	size_t pattern_count;
 
-	uint64_t level_count;
-	uint64_t actual_level;
+	uint32_t level_count;
+	uint32_t actual_level;
 
 	bool debug_enable;
-	char **semantic_names;
-	size_t name_offset;
 
-	uint64_t pass_count;
+	semantizer_log_callback_t *logger_function;
+	void *logger_context;
+	uint32_t logger_level;
+
+	uint32_t name_offset;
+	char **semantic_names;
+
+	uint32_t pass_count;
 } semantizer_t;
 
 typedef enum semantizer_forge_status_e {
@@ -147,6 +163,9 @@ typedef struct semantizer_forge_result_s {
 bool semantizer_unit_init(semantizer_unit_t *unit, semantizer_unit_kind_t kind, void *data, semantizer_data_free_t *data_free);
 void semantizer_unit_clear(semantizer_unit_t *unit);
 
+void semantizer_token_trace(semantizer_unit_t *tracer, lexer_token_t *unit);
+
+void semantizer_stream_trace(semantizer_t *semantizer, semantizer_unit_t *tracer, size_t index);
 semantizer_unit_kind_t semantizer_stream_get(semantizer_t *semantizer, size_t index);
 bool semantizer_stream_match(semantizer_t *semantizer, size_t index, semantizer_unit_kind_t kind);
 void semantizer_stream_peek(semantizer_t *semantizer, size_t index, void **target, semantizer_data_free_t **target_free);
@@ -161,7 +180,10 @@ void semantizer_pattern_setup(semantizer_t *semantizer, semantizer_pattern_t *pa
 void semantizer_forge_setup(semantizer_t *semantizer, semantizer_forge_callback_t **callbacks, size_t callback_count);
 semantizer_forge_result_t semantizer_forge_atomize(semantizer_t *semantizer, lexer_token_t *array, size_t array_size);
 
-void semantizer_debug_setup(semantizer_t *semantizer, bool debug_enable, char **semantic_names, size_t name_offset);
+void semantizer_debug_setup(semantizer_t *semantizer, 
+			    bool debug_enable, 
+			    char **semantic_names, size_t name_offset, 
+			    semantizer_log_callback_t *log, void *logger_context);
 
 void semantize(semantizer_t *semantizer);
 
@@ -218,9 +240,16 @@ typedef struct __packed reo_embed_s {
 	uint8_t data[];
 } reo_embed_t;
 
-typedef enum reo_symbol_type_e : uint8_t {
-	REO_SYMBOL_OBJECT,
-	REO_SYMBOL_FUNCTION
+#define REO_LOCATION_CODE 1
+#define REO_LOCATION_DATA 2
+#define REO_LOCATION_BLOCK 3
+
+typedef struct reo_symbol_type_s {
+	bool is_function; // false if object
+	bool is_global; // false if local
+	bool is_weak; // false if not
+	uint8_t location : 2; // INVALID, CODE, DATA OR BLOCK
+	uint8_t reserved : 3;
 } reo_symbol_type_t;
 
 typedef struct __packed reo_symbol_s {
@@ -255,7 +284,8 @@ typedef struct __packed reo_import_s {
 
 typedef enum reo_export_type_e : uint8_t {
 	REO_EXPORT_OBJECT,
-	REO_EXPORT_FUNCTION
+	REO_EXPORT_FUNCTION,
+	REO_EXPORT_ROUTINE
 } reo_export_type_t;
 
 typedef struct __packed reo_export_s {

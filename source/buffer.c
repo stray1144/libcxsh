@@ -29,7 +29,6 @@ bool buffer_size_ensure(buffer_t *buffer, size_t minimum) {
 	buffer->data = new_data;
 
 	buffer->capacity = new_size;
-	buffer->generation++;
 
 	return true;
 }

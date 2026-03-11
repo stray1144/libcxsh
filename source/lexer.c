@@ -12,10 +12,10 @@ bool comment_handle(lexer_t *lexer, lexer_token_t *token) {
 
 	if(strncmp(string, "//", 2) != 0) return false;
 
-	uint64_t consumed = strcspn(string, "\n");
+	lexer_position_t consumed = strcspn(string, "\n");
 	
 	token->kind = LEXER_TOKEN_COMMENT;
-	token->string = (lexer_slice_t) {string, consumed};
+	token->string = (lexer_span_t) {lexer_string_get(lexer), consumed};
 
 	lexer_advance(lexer, consumed);
 
@@ -27,10 +27,10 @@ bool identifier_handle(lexer_t *lexer, lexer_token_t *token) {
 
 	if(!isalpha(*string) && *string != '_') return false;
 	
-	uint64_t consumed = strspn(string, "_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	lexer_position_t consumed = strspn(string, "_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
 	token->kind = LEXER_TOKEN_IDENTIFIER;
-	token->string = (lexer_slice_t) {string, consumed};
+	token->string = (lexer_span_t) {lexer_string_get(lexer), consumed};
 
 	lexer_advance(lexer, consumed);
 
@@ -47,7 +47,7 @@ bool hexadecimal_handle(lexer_t *lexer, lexer_token_t *token) {
 	token->kind = LEXER_TOKEN_HEXADECIMAL_LITERAL;
 	token->number = strtoll(string, &end, 16);
 
-	uint64_t consumed = end - string;
+	lexer_position_t consumed = end - string;
 	lexer_advance(lexer, consumed);
 
 	return true;
@@ -60,9 +60,9 @@ bool integer_handle(lexer_t *lexer, lexer_token_t *token) {
 
 	char *end = 0;
 
-	uint64_t number = strtoll(string, &end, 10);
+	int64_t number = strtoll(string, &end, 10);
 
-	uint64_t consumed = end - string;
+	lexer_position_t consumed = end - string;
 	if(consumed == 0) return false;
 
 	token->kind = LEXER_TOKEN_INTEGER_LITERAL;
@@ -80,15 +80,15 @@ bool float_handle(lexer_t *lexer, lexer_token_t *token) {
 
 	char *end = 0;
 
-	float _float = strtof(string, &end);
+	float real = strtof(string, &end);
 
-	uint64_t consumed = end - string;
+	lexer_position_t consumed = end - string;
 
 	// parenthesis paranoid
 	if(consumed == 0 || memchr(string, '.', consumed) == nullptr) return false;
 
 	token->kind = LEXER_TOKEN_FLOAT_LITERAL;
-	token->_float = _float;
+	token->real = real;
 
 	lexer_advance(lexer, consumed);
 
@@ -100,10 +100,10 @@ bool string_handle(lexer_t *lexer, lexer_token_t *token) {
 
 	if(*string != '\"') return false;
 
-	uint64_t consumed = strcspn(string + 1, "\"") + 2;
+	lexer_position_t consumed = strcspn(string + 1, "\"") + 2;
 	
 	token->kind = LEXER_TOKEN_STRING_LITERAL;
-	token->string = (lexer_slice_t) {string, consumed};
+	token->string = (lexer_span_t) {lexer_string_get(lexer), consumed};
 
 	lexer_advance(lexer, consumed);
 
@@ -144,8 +144,12 @@ bool lexer_finished(lexer_t *lexer) {
 	return *lexer_string_get(lexer) == '\0';
 }
 
-void lexer_advance(lexer_t *lexer, uint64_t steps) {
+void lexer_advance(lexer_t *lexer, lexer_position_t steps) {
 	lexer->consumed += steps;
+}
+
+lexer_position_t lexer_position_get(lexer_t *lexer) {
+	return lexer->consumed;
 }
 
 bool lexer_init(lexer_t *lexer, char *data) {
@@ -200,7 +204,15 @@ bool lex(lexer_t *lexer, lexer_token_t *token) {
 
 	noise_skip(lexer);
 
-	for(int i = 1; i < LEXER_TOKEN_KIND_COUNT; i++) if(lexer_callback_run(lexer, token, i)) return true;
+	lexer_position_t previous = lexer_position_get(lexer);
+	// not the best way to do it, but the fastest to implement
+
+	for(int i = 1; i < LEXER_TOKEN_KIND_COUNT; i++) {
+		if(lexer_callback_run(lexer, token, i)) {
+			token->position = previous;
+			return true;
+		}
+	} // denest
 
 	return false;
 }
