@@ -246,7 +246,7 @@ void tokens_get(buffer_t *buffer, char *string) {
 	lexer_clear(&lexer);
 }
 
-void debug(void *context, uint32_t level, char *message) {
+void debug_print(void *context, uint32_t level, char *message) {
 	(void) (context);
 	(void) (level);
 	printf("[DEBUG] %s\n", message);
@@ -261,15 +261,15 @@ int main(void) {
 	semantizer_t semantizer = {0};
 	semantizer_init(&semantizer);
 
+	semantizer_debug_setup(&semantizer, 
+			false, // set to true to get debugging
+			(void *)semantic_names, 9, 
+			(void *)debug_print, nullptr);
+
 	semantizer_forge_setup(&semantizer, forge_callbacks, FORGE_CALLBACKS);
 	semantizer_forge_result_t status = semantizer_forge_atomize(&semantizer, buffer_get(&buffer, 0), buffer.used);
 	
 	test_assert(status.status == FORGE_SUCCESS, "atomizing failed");
-
-	semantizer_debug_setup(&semantizer, 
-			false, // set to true to get debugging
-			(void *)semantic_names, 9, 
-			(void *)debug, nullptr);
 
 	semantizer_pattern_setup(&semantizer, patterns, PATTERNS, 1);
 	semantize(&semantizer);
