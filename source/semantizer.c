@@ -4,6 +4,42 @@
 #include <stdio.h>
 #include <string.h>
 
+#define SEMANTIZER_LOG(semantizer, message) semantizer->logger_function(semantizer->logger_context, semantizer->logger_level, message)
+
+void semantizer_debug(semantizer_t *semantizer) {
+	if(semantizer->debug_enable == false) return;
+	
+	char buffer[3072];
+	memset(buffer, 0, 3072);
+
+	snprintf(buffer, 3072, 
+	  "[forge_callbacks: %p, forge_callback_count: %zu, patterns: %p, pattern_count: %zu, level_count: %d, actual_level: %d, pass_count: %d]", 
+	  semantizer->forge_callbacks, semantizer->forge_callback_count, 
+	  semantizer->patterns, semantizer->pattern_count, 
+	  semantizer->level_count, semantizer->actual_level, 
+	  semantizer->pass_count);
+
+	SEMANTIZER_LOG(semantizer, buffer);
+
+	memset(buffer, 0, 3072);
+	strlcat(buffer, "{ ", 3072);
+
+	for(size_t i = 0; i < semantizer->stream.used; i++) {
+		semantizer_unit_t *unit = buffer_get(&semantizer->stream, i);
+
+		char unit_display[256];
+		memset(unit_display, 0, 256);
+
+		snprintf(unit_display, 256, "%s@%d ", semantizer->semantic_names[unit->kind] + semantizer->name_offset, unit->position);
+
+		strlcat(buffer, unit_display, 3072);
+	}
+
+	strlcat(buffer, "}", 3072);
+
+	SEMANTIZER_LOG(semantizer, buffer);
+}
+
 bool semantizer_unit_init(semantizer_unit_t *unit, semantizer_unit_kind_t kind, void *data, semantizer_data_free_t *data_free) {
 	if(unit == nullptr) return false;
 
@@ -119,6 +155,7 @@ bool semantizer_forge_convert(semantizer_t *semantizer, lexer_token_t *token) {
 		if(semantizer_forge_callback_run(semantizer, i, &unit, token) == false) continue;
 		
 		buffer_append(&semantizer->stream, &unit, 1);
+		semantizer_debug(semantizer);
 		return true;
 	}
 
@@ -186,42 +223,6 @@ void semantizer_debug_setup(semantizer_t *semantizer,
 	
 	semantizer->logger_function = logger_function;
 	semantizer->logger_context = logger_context;
-}
-
-#define SEMANTIZER_LOG(semantizer, message) semantizer->logger_function(semantizer->logger_context, semantizer->logger_level, message)
-
-void semantizer_debug(semantizer_t *semantizer) {
-	if(semantizer->debug_enable == false) return;
-	
-	char buffer[3072];
-	memset(buffer, 0, 3072);
-
-	snprintf(buffer, 3072, 
-	  "[forge_callbacks: %p, forge_callback_count: %zu, patterns: %p, pattern_count: %zu, level_count: %d, actual_level: %d, pass_count: %d]", 
-	  semantizer->forge_callbacks, semantizer->forge_callback_count, 
-	  semantizer->patterns, semantizer->pattern_count, 
-	  semantizer->level_count, semantizer->actual_level, 
-	  semantizer->pass_count);
-
-	SEMANTIZER_LOG(semantizer, buffer);
-
-	memset(buffer, 0, 3072);
-	strlcat(buffer, "{ ", 3072);
-
-	for(size_t i = 0; i < semantizer->stream.used; i++) {
-		semantizer_unit_t *unit = buffer_get(&semantizer->stream, i);
-
-		char unit_display[256];
-		memset(unit_display, 0, 256);
-
-		snprintf(unit_display, 256, "%s@%d ", semantizer->semantic_names[unit->kind] + semantizer->name_offset, unit->position);
-
-		strlcat(buffer, unit_display, 3072);
-	}
-
-	strlcat(buffer, "}", 3072);
-
-	SEMANTIZER_LOG(semantizer, buffer);
 }
 
 bool semantizer_pass(semantizer_t *semantizer) {
