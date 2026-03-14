@@ -40,9 +40,8 @@ int main(void) {
 	test_assert(tokens[5].number == +20, "Token 6 (positive integer) is wrong");
 	test_assert(tokens[6].number == -20, "Token 7 (negative integer) is wrong");
 	test_assert(strncmp(tokens[7].string.base, "\"hello world\"", tokens[7].string.length) == 0, "Token 8 (string) is wrong");
-
-	test_assert(tokens[9].real == +1.0, "Token 9 (positive float) is wrong");
-	test_assert(tokens[10].real == -1.0, "Token 10 (negative float) is wrong");
+	test_assert(tokens[9].real == +1.0, "Token 10 (positive float) is wrong");
+	test_assert(tokens[10].real == -1.0, "Token 11 (negative float) is wrong");
 
 	return 0;
 }
