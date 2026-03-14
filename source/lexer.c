@@ -152,6 +152,20 @@ lexer_position_t lexer_position_get(lexer_t *lexer) {
 	return lexer->consumed;
 }
 
+void lexer_position_resolve(lexer_t *lexer, lexer_position_t position, lexer_position_t *line, lexer_position_t *column) {
+	(*line) = 1;
+	(*column) = 1;
+
+	for(lexer_position_t i = 0; i < position; i++) {
+		char character = lexer->data[i];
+		(*column)++;
+		
+		if(character != '\n') continue;
+		(*line)++;
+		(*column) = 1;
+	}
+}
+
 bool lexer_init(lexer_t *lexer, char *data) {
 	if(!lexer) return false;
 	

@@ -68,6 +68,7 @@ char *lexer_string_get(lexer_t *lexer);
 void lexer_advance(lexer_t *lexer, lexer_position_t steps);
 
 lexer_position_t lexer_position_get(lexer_t *lexer);
+void lexer_position_resolve(lexer_t *lexer, lexer_position_t position, lexer_position_t *line, lexer_position_t *column);
 
 bool lex(lexer_t *lexer, lexer_token_t *token);
 
