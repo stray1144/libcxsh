@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SEMANTIZER_LOG(semantizer, message) semantizer->logger_function(semantizer->logger_context, semantizer->logger_level, message)
+#define SEMANTIZER_LOG(semantizer, message) semantizer->logger_function(semantizer->logger_context, message)
 
 void semantizer_debug(semantizer_t *semantizer) {
 	if(semantizer->debug_enable == false) return;
@@ -19,10 +19,7 @@ void semantizer_debug(semantizer_t *semantizer) {
 	  semantizer->level_count, semantizer->actual_level, 
 	  semantizer->pass_count);
 
-	SEMANTIZER_LOG(semantizer, buffer);
-
-	memset(buffer, 0, 3072);
-	strlcat(buffer, "{ ", 3072);
+	strlcat(buffer, " { ", 3072);
 
 	for(size_t i = 0; i < semantizer->stream.used; i++) {
 		semantizer_unit_t *unit = buffer_get(&semantizer->stream, i);
@@ -30,7 +27,7 @@ void semantizer_debug(semantizer_t *semantizer) {
 		char unit_display[256];
 		memset(unit_display, 0, 256);
 
-		snprintf(unit_display, 256, "%s@%d ", semantizer->semantic_names[unit->kind] + semantizer->name_offset, unit->position);
+		snprintf(unit_display, 256, "%s@%d(%d) ", semantizer->semantic_names[unit->kind] + semantizer->name_offset, unit->position, unit->kind);
 
 		strlcat(buffer, unit_display, 3072);
 	}

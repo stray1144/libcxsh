@@ -127,7 +127,7 @@ typedef struct semantizer_pattern_s {
 typedef bool (semantizer_forge_callback_t)(semantizer_unit_t *unit, lexer_token_t *token);
 #define SEMANTIZER_FORGE_CALLBACK_NONE (semantizer_forge_callback_t *)(0)
 
-typedef void (semantizer_log_callback_t)(void *context, uint32_t level, const char *message);
+typedef void (semantizer_log_callback_t)(void *context, const char *message);
 #define SEMANTIZER_LOG_CALLBACK_NONE (semantizer_log_callback_t *)(0)
 
 typedef struct semantizer_s {
@@ -146,7 +146,6 @@ typedef struct semantizer_s {
 
 	semantizer_log_callback_t *logger_function;
 	void *logger_context;
-	uint32_t logger_level;
 
 	uint32_t name_offset;
 	char **semantic_names;

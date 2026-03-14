@@ -246,7 +246,7 @@ void tokens_get(buffer_t *buffer, char *string) {
 	lexer_clear(&lexer);
 }
 
-void debug_print(void *context, uint32_t level, char *message) {
+void debug_print(void *context, char *message) {
 	(void) (context);
 	(void) (level);
 	printf("[DEBUG] %s\n", message);
