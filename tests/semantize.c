@@ -248,7 +248,6 @@ void tokens_get(buffer_t *buffer, char *string) {
 
 void debug_print(void *context, char *message) {
 	(void) (context);
-	(void) (level);
 	printf("[DEBUG] %s\n", message);
 }
 
