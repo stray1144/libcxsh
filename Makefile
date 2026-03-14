@@ -42,3 +42,4 @@ install: all
 	@mkdir -p $(DESTDIR)/$(INCLUDE_INSTALL)/cxtoolchain
 	@install -m 755 $(BUILD)/libcxsh.so $(DESTDIR)/$(LIB_INSTALL)
 	@install -m 644 include/cxtoolchain/libcxsh.h $(DESTDIR)/$(INCLUDE_INSTALL)/cxtoolchain
+	@ldconfig
