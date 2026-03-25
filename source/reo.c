@@ -111,6 +111,14 @@ bool reo_file_save(reo_file_t *file, const char *path) {
 	return status;
 }
 
+reo_file_type_t reo_type_get(reo_file_t *file) {
+	return file->header.type;
+}
+
+void reo_type_set(reo_file_t *file, reo_file_type_t type) {
+	file->header.type = type;
+}
+
 reo_offset_t reo_string_add(reo_file_t *file, const char *string) {
 	size_t string_size = strlen(string) + 1;
 	reo_offset_t offset = file->strings.used;

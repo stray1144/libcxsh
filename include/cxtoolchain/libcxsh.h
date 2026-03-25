@@ -312,6 +312,10 @@ void reo_file_clear(reo_file_t *file);
 bool reo_file_load(reo_file_t *file, const char *path);
 bool reo_file_save(reo_file_t *file, const char *path);
 
+
+reo_file_type_t reo_type_get(reo_file_t *file);
+void reo_type_set(reo_file_t *file, reo_file_type_t type);
+
 reo_offset_t reo_string_add(reo_file_t *file, const char *string);
 // TODO: make safe
 // void reo_string_remove(reo_file_t *file, reo_offset_t offset);
