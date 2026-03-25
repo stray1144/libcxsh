@@ -161,6 +161,10 @@ void *reo_data_get(reo_file_t *file, reo_offset_t offset) {
 	return buffer_get(&file->data, offset);
 }
 
+void reo_block_reserve(reo_file_t *file, reo_size_t size) {
+	file->header.sizes[REO_BLOCK_SECTION] = size;
+}
+
 bool reo_entry_init(reo_entry_t *entry, reo_size_t size, reo_offset_t name_string, reo_entry_kind_t type) {
 	if(entry == nullptr) return false;
 
