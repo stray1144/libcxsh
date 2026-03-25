@@ -26,6 +26,11 @@ void reo_file_clear(reo_file_t *file) {
 	buffer_clear(&file->strings);
 	buffer_clear(&file->code);
 	buffer_clear(&file->data);
+
+	for(size_t i = 0; i < file->entries.used; i++) {
+		reo_entry_t **entry = buffer_get(&file->entries, i);
+		free(*entry);
+	}
 	buffer_clear(&file->entries);
 
 	memset(file, 0, sizeof(reo_file_t));
