@@ -247,10 +247,11 @@ typedef struct __packed reo_embed_s {
 #define REO_LOCATION_DATA 2
 #define REO_LOCATION_BLOCK 3
 
-typedef struct reo_symbol_type_s {
-	bool is_function; // false if object
-	bool is_global; // false if local
-	bool is_weak; // false if not
+// changed to uint8_t : 1 because bool added a lot of bloat.
+typedef struct __packed reo_symbol_type_s {
+	uint8_t is_function : 1; // false if object
+	uint8_t is_global : 1; // false if local
+	uint8_t is_weak : 1; // false if not
 	uint8_t location : 2; // INVALID, CODE, DATA OR BLOCK
 	uint8_t reserved : 3;
 } reo_symbol_type_t;
