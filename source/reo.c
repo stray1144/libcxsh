@@ -17,6 +17,8 @@ bool reo_file_init(reo_file_t *file) {
 	buffer_init(&file->data, sizeof(uint8_t));
 	buffer_init(&file->entries, sizeof(reo_entry_t *));
 
+	reo_string_add(file, ""); // null string @ 0x00
+
 	return true;
 }
 
