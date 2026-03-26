@@ -219,7 +219,7 @@ typedef struct reo_header_s {
 	reo_file_type_t type;
 	uint16_t reserved;
 	uint32_t objects;
-	reo_offset_t entry;
+	reo_offset_t entry_name;
 	reo_size_t sizes[REO_SECTION_COUNT]; // 256
 } reo_header_t;
 

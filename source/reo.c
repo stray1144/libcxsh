@@ -46,7 +46,7 @@ bool reo_header_serialize(reo_file_t *file, FILE *handle) {
 	status &= fwrite(&file->header.type, sizeof(reo_file_type_t), 1, handle) == 1; 
 	status &= fwrite(&file->header.reserved, sizeof(uint16_t), 1, handle) == 1; 
 	status &= fwrite(&file->header.objects, sizeof(uint32_t), 1, handle) == 1; 
-	status &= fwrite(&file->header.entry, sizeof(reo_offset_t), 1, handle) == 1; 
+	status &= fwrite(&file->header.entry_name, sizeof(reo_offset_t), 1, handle) == 1; 
 	status &= fwrite(file->header.sizes, sizeof(reo_offset_t), REO_SECTION_COUNT, handle) == REO_SECTION_COUNT; 
 
 	return status;
