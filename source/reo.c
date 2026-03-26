@@ -224,11 +224,10 @@ size_t reo_embed_add(reo_file_t *file, reo_offset_t name_string, uint8_t *data, 
 	return reo_entry_add(file, (void *)entry);
 }
 
-size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_size_t size, reo_symbol_type_t type) {
+size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_symbol_type_t type) {
 	reo_symbol_t *entry = reo_entry_create(sizeof(reo_symbol_t), name_string, REO_ENTRY_SYMBOL);
 
 	entry->location = location;
-	entry->size = size;
 	entry->type = type;
 
 	return reo_entry_add(file, (void *)entry);
@@ -253,11 +252,10 @@ size_t reo_import_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t v
 	return reo_entry_add(file, (void *)entry);
 }
 
-size_t reo_export_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_size_t size, reo_export_type_t type) {
+size_t reo_export_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_export_type_t type) {
 	reo_export_t *entry = reo_entry_create(sizeof(reo_export_t), name_string, REO_ENTRY_EXPORT);
 
 	entry->location = location;
-	entry->size = size;
 	entry->type = type;
 
 	return reo_entry_add(file, (void *)entry);
