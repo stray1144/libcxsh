@@ -26,8 +26,8 @@ void create_test(void) {
 	reo_file_init(&file);
 
 	reo_offset_t string = reo_string_add(&file, "some_data");
-	reo_string_add(&file, "stray1144");
-	test_assert(string == 0, "First added string index isn't 0. weird");
+	reo_offset_t author_original = reo_string_add(&file, "stray1144");
+	test_assert(string == 1, "First added string index isn't 1. weird");
 
 	reo_code_write(&file, unpatched_code, sizeof(unpatched_code));
 	test_assert(memcmp(buffer_get(&file.code, 0), unpatched_code, sizeof(unpatched_code)) == 0, "Data is wrong");
