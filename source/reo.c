@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 
 bool reo_file_init(reo_file_t *file) {
@@ -126,11 +127,28 @@ void reo_type_set(reo_file_t *file, reo_file_type_t type) {
 	file->header.type = type;
 }
 
+reo_offset_t reo_string_find(reo_file_t *file, const char *find) {
+	reo_offset_t offset = 0;
+	while (offset < file->header.sizes[REO_STRING_SECTION]) {
+		char *string = buffer_get(&file->strings, offset);
+
+		if(strcmp(string, find) == 0) return offset;
+
+		offset += strlen(string) + 1;
+	}
+
+	return 0;
+}
+
 reo_offset_t reo_string_add(reo_file_t *file, const char *string) {
+	reo_offset_t duplicate = reo_string_find(file, string);
+	if(duplicate) return duplicate;
+
 	size_t string_size = strlen(string) + 1;
 	reo_offset_t offset = file->strings.used;
 	buffer_append(&file->strings, (void *)string, string_size);
 	file->header.sizes[REO_STRING_SECTION] += string_size;
+
 	return offset;
 };
 

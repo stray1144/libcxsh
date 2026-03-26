@@ -46,6 +46,10 @@ void create_test(void) {
 	reo_import_add(&file, string, reo_string_add(&file, "1.0.0"), REO_IMPORT_OBJECT);
 	reo_export_add(&file, string, weird_address, REO_EXPORT_OBJECT);
 
+	reo_offset_t author_duplicate = reo_string_add(&file, "stray1144");
+
+	test_assert(author_original == author_duplicate, "no dedup");
+
 	reo_file_save(&file, "test.cxo");
 	reo_file_clear(&file);
 
