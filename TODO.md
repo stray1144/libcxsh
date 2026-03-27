@@ -1,0 +1,2 @@
+- [ ] Removal of unused strings.
+- [ ] Smarter relocations (avoid bloating the executable with 8-byte addresses).
