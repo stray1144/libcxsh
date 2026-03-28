@@ -39,7 +39,82 @@ void reo_file_clear(reo_file_t *file) {
 	memset(file, 0, sizeof(reo_file_t));
 }
 
-bool reo_file_load(reo_file_t *file, const char *path);
+// Read plain data sections
+bool reo_section_read(reo_file_t *file, FILE *descriptor, uint32_t index) {
+	if(index > (REO_SECTION_COUNT - 2)) return false; // Only read sections 0 - 2 (strings to data)
+
+	reo_size_t size = file->header.sizes[index];
+	// printf("SECTION %d SIZE: %d\n", index, size);
+	char *section = calloc(size, 1);
+	if(section == nullptr) return false;
+
+	if(fread(section, 1, size, descriptor) != size) {
+		free(section);
+		return false;
+	}
+
+	if(index == REO_STRING_SECTION) buffer_append(&file->strings, section, size);
+	if(index == REO_CODE_SECTION) buffer_append(&file->code, section, size);
+	if(index == REO_DATA_SECTION) buffer_append(&file->data, section, size);
+	
+	free(section);
+
+	return true;
+}
+
+// read entry from CURRENT FILE CURSOR
+reo_entry_t *reo_entry_deserialize(FILE *descriptor) {	
+	reo_entry_t entry = {0};
+
+	if(fread(&entry, 1, sizeof(reo_entry_t), descriptor) != sizeof(reo_entry_t)) return nullptr;
+
+	reo_entry_t *object = calloc(1, entry.size);
+	if(object == nullptr) return nullptr;
+
+	memcpy(object, &entry, sizeof(reo_entry_t));
+
+	reo_size_t payload_size = entry.size - sizeof(reo_entry_t);
+	if(fread((char *)object + sizeof(reo_entry_t), 1, payload_size, descriptor) != payload_size) {
+		free(object);
+		return nullptr;
+	}
+
+	return object;
+}
+
+// WARN: EMERGENCY IMPLEMENTATION! will be tested on 2ALd.
+// TODO: Improve what can be improved and make real tests
+bool reo_file_load(reo_file_t *file, const char *path) {
+	if(file == nullptr) return false;
+
+	FILE *descriptor = fopen(path, "rb");
+	if(descriptor == nullptr) return false;
+
+	if(fread(&file->header, 1, sizeof(reo_header_t), descriptor) != sizeof(reo_header_t)) return false;
+	if(file->header.magic != REO_MAGIC) return false;
+	
+	bool status = true;
+	status &= reo_section_read(file, descriptor, REO_STRING_SECTION);
+	status &= reo_section_read(file, descriptor, REO_CODE_SECTION);
+	status &= reo_section_read(file, descriptor, REO_DATA_SECTION);
+	if(status == false) {
+		fclose(descriptor);
+		return false;
+	}
+
+	for(uint32_t i = 0; i < file->header.objects; i++) {
+		reo_entry_t *entry = reo_entry_deserialize(descriptor);
+		if(entry == nullptr) {
+			fclose(descriptor);
+			return false;
+		}
+		buffer_append(&file->entries, &entry, 1);
+	}
+
+	fclose(descriptor);
+
+	return true;
+}
 
 bool reo_header_serialize(reo_file_t *file, FILE *handle) {
 	bool status = true;
