@@ -41,7 +41,7 @@ void create_test(void) {
 	reo_data_add(&file, &picky_address, sizeof(picky_address));
 
 	reo_embed_add(&file, string, data, sizeof(data));
-	reo_symbol_add(&file, string, weird_address, (reo_symbol_type_t) {false, false, false, REO_LOCATION_CODE, 0});
+	reo_symbol_add(&file, string, weird_address, 8, (reo_symbol_type_t) {false, false, false, REO_LOCATION_CODE, 0});
 	reo_relocation_add(&file, string, picky_address, REO_RELOCATION_ABSOLUTE);
 	reo_import_add(&file, string, reo_string_add(&file, "1.0.0"), REO_IMPORT_OBJECT);
 	reo_export_add(&file, string, weird_address, REO_EXPORT_OBJECT);
