@@ -12,7 +12,8 @@ bool reo_file_init(reo_file_t *file) {
 
 	reo_file_clear(file);
 
-	file->header.magic = REO_MAGIC;	
+	file->header.magic = REO_MAGIC;
+	reo_version_set(file, REO_VERSION);
 	buffer_init(&file->strings, sizeof(char));
 	buffer_init(&file->code, sizeof(uint8_t));
 	buffer_init(&file->data, sizeof(uint8_t));
@@ -53,7 +54,7 @@ bool reo_section_read(reo_file_t *file, FILE *descriptor, uint32_t index) {
 		return false;
 	}
 
-	if(index == REO_STRING_SECTION) buffer_append(&file->strings, section, size);
+	if(index == REO_STRING_SECTION) buffer_append(&file->strings, section + 1, size);
 	if(index == REO_CODE_SECTION) buffer_append(&file->code, section, size);
 	if(index == REO_DATA_SECTION) buffer_append(&file->data, section, size);
 	
@@ -202,7 +203,16 @@ void reo_type_set(reo_file_t *file, reo_file_type_t type) {
 	file->header.type = type;
 }
 
+uint8_t reo_version_get(reo_file_t *file) {
+	return file->header.version;
+}
+void reo_version_set(reo_file_t *file, uint8_t version) {
+	file->header.version = version;
+}
+
 reo_offset_t reo_string_find(reo_file_t *file, const char *find) {
+	if(*find == '\0') return 0;
+
 	reo_offset_t offset = 0;
 	while (offset < file->header.sizes[REO_STRING_SECTION]) {
 		char *string = buffer_get(&file->strings, offset);
@@ -216,11 +226,16 @@ reo_offset_t reo_string_find(reo_file_t *file, const char *find) {
 }
 
 reo_offset_t reo_string_add(reo_file_t *file, const char *string) {
-	reo_offset_t duplicate = reo_string_find(file, string);
-	if(duplicate) return duplicate;
+	if(string == nullptr) return 0;
 
-	size_t string_size = strlen(string) + 1;
 	reo_offset_t offset = file->strings.used;
+	
+	if(offset) {
+		reo_offset_t duplicate = reo_string_find(file, string);
+		if(duplicate) return duplicate;
+	}
+		
+	size_t string_size = strlen(string) + 1;
 	buffer_append(&file->strings, (void *)string, string_size);
 	file->header.sizes[REO_STRING_SECTION] += string_size;
 
@@ -319,10 +334,11 @@ size_t reo_embed_add(reo_file_t *file, reo_offset_t name_string, uint8_t *data, 
 	return reo_entry_add(file, (void *)entry);
 }
 
-size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_symbol_type_t type) {
+size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_size_t symbol_size, reo_symbol_type_t type) {
 	reo_symbol_t *entry = reo_entry_create(sizeof(reo_symbol_t), name_string, REO_ENTRY_SYMBOL);
 
 	entry->location = location;
+	entry->symbol_size = symbol_size;
 	entry->type = type;
 
 	return reo_entry_add(file, (void *)entry);
@@ -360,9 +376,15 @@ void reo_entry_remove(reo_file_t *file, size_t index) {
 	reo_entry_t *entry = reo_entry_get(file, index);
 	reo_entry_destroy(entry);
 	buffer_remove(&file->entries, index, 1);
+
+	file->header.objects--;
 }
 
 reo_entry_t *reo_entry_get(reo_file_t *file, size_t index) {
 	reo_entry_t **entry = buffer_get(&file->entries, index);
 	return (entry == nullptr) ? nullptr : *entry;
+}
+
+uint32_t reo_entry_count(reo_file_t *file) {
+	return file->header.objects;
 }

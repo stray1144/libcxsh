@@ -220,7 +220,7 @@ typedef struct reo_header_s {
 	uint16_t reserved;
 	uint32_t objects;
 	reo_offset_t entry_name;
-	reo_size_t sizes[REO_SECTION_COUNT]; // 256
+	reo_size_t sizes[REO_SECTION_COUNT];
 } reo_header_t;
 
 typedef enum reo_entry_kind_e : uint8_t {
@@ -259,6 +259,7 @@ typedef struct __packed reo_symbol_type_s {
 typedef struct __packed reo_symbol_s {
 	reo_entry_t entry;
 	reo_offset_t location;
+	reo_size_t symbol_size;
 	reo_symbol_type_t type;
 } reo_symbol_t;
 
@@ -311,9 +312,11 @@ void reo_file_clear(reo_file_t *file);
 bool reo_file_load(reo_file_t *file, const char *path);
 bool reo_file_save(reo_file_t *file, const char *path);
 
-
 reo_file_type_t reo_type_get(reo_file_t *file);
 void reo_type_set(reo_file_t *file, reo_file_type_t type);
+
+uint8_t reo_version_get(reo_file_t *file);
+void reo_version_set(reo_file_t *file, uint8_t version);
 
 reo_offset_t reo_string_add(reo_file_t *file, const char *string);
 // TODO: make safe
@@ -335,13 +338,14 @@ void reo_entry_clear(reo_entry_t *entry);
 
 // returns the index of the entry
 size_t reo_embed_add(reo_file_t *file, reo_offset_t name_string, uint8_t *data, reo_size_t size);
-size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_symbol_type_t type);
+size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_size_t symbol_size, reo_symbol_type_t type);
 size_t reo_relocation_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t patch_location, reo_relocation_type_t type);
 size_t reo_import_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t version, reo_import_type_t type);
 size_t reo_export_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_export_type_t type);
 
-size_t reo_entry_count(reo_file_t *file);
+uint32_t reo_entry_count(reo_file_t *file);
 reo_symbol_t *reo_symbol_search(reo_file_t *file, const char *name);
+reo_embed_t *reo_embed_search(reo_file_t *file, const char *name);
 
 void reo_entry_remove(reo_file_t *file, size_t index);
 reo_entry_t *reo_entry_get(reo_file_t *file, size_t index);
