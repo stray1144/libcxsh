@@ -263,15 +263,10 @@ typedef struct __packed reo_symbol_s {
 	reo_symbol_type_t type;
 } reo_symbol_t;
 
-typedef enum reo_relocation_type_e : uint8_t {
-	REO_RELOCATION_ABSOLUTE,
-	REO_RELOCATION_PC_RELATIVE
-} reo_relocation_type_t;
-
 typedef struct __packed reo_relocation_s {
 	reo_entry_t entry;
-	reo_offset_t patch_location;
-	reo_relocation_type_t type;
+	reo_offset_t target_name;
+	reo_offset_t addend;
 } reo_relocation_t;
 
 typedef enum reo_import_type_e : uint8_t {
@@ -339,7 +334,7 @@ void reo_entry_clear(reo_entry_t *entry);
 // returns the index of the entry
 size_t reo_embed_add(reo_file_t *file, reo_offset_t name_string, uint8_t *data, reo_size_t size);
 size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_size_t symbol_size, reo_symbol_type_t type);
-size_t reo_relocation_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t patch_location, reo_relocation_type_t type);
+size_t reo_relocation_add(reo_file_t *file, reo_offset_t patch_name, reo_offset_t target_name, reo_offset_t addend);
 size_t reo_import_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t version, reo_import_type_t type);
 size_t reo_export_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t location, reo_export_type_t type);
 

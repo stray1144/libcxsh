@@ -344,14 +344,13 @@ size_t reo_symbol_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t l
 	return reo_entry_add(file, (void *)entry);
 }
 
-size_t reo_relocation_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t patch_location, reo_relocation_type_t type) {
-	reo_relocation_t *entry = reo_entry_create(sizeof(reo_relocation_t), name_string, REO_ENTRY_RELOCATION);
+size_t reo_relocation_add(reo_file_t *file, reo_offset_t patch_name, reo_offset_t target_name, reo_offset_t addend) {
+	reo_relocation_t *entry = reo_entry_create(sizeof(reo_relocation_t), patch_name, REO_ENTRY_RELOCATION);
 
-	entry->patch_location = patch_location;
-	entry->type = type;
+	entry->target_name = target_name;
+	entry->addend = addend;
 
 	return reo_entry_add(file, (void *)entry);
-
 }
 
 size_t reo_import_add(reo_file_t *file, reo_offset_t name_string, reo_offset_t version_string, reo_import_type_t type) {
