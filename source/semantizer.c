@@ -46,7 +46,7 @@ bool semantizer_unit_init(semantizer_unit_t *unit, semantizer_unit_kind_t kind, 
 	unit->data = data;
 	unit->data_free = data_free;
 
-	return false;
+	return true;
 }
 
 void semantizer_unit_clear(semantizer_unit_t *unit) {
